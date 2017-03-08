@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>$id$</id>
+    <version>1.1.0</version>
+    <title>$title$</title>
+    <authors>$author$</authors>
+    <owners>$author$</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Adds some features to the Microsoft OpenXml SDK</description>
+    <releaseNotes>Summary of changes</releaseNotes>
+    <copyright>Copyright 2017</copyright>
+  </metadata>
+</package>
