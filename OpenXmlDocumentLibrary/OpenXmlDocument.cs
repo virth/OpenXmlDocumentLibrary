@@ -24,6 +24,11 @@ namespace OpenXmlDocumentLibrary
         /// <returns>The function returns the original value, if it existed</returns>
         public string SetNewProperty(string propertyName, object propertyValue, PropertyType propertyType)
         {
+            if (string.IsNullOrEmpty(propertyName))
+                throw new ArgumentNullException(nameof(propertyName));
+            if (propertyValue == null)
+                throw new ArgumentNullException(nameof(propertyValue));
+
             string originalValue = null;
 
             var newProperty = CreatePropertyFromPropertyType(propertyValue, propertyType);
@@ -53,7 +58,7 @@ namespace OpenXmlDocumentLibrary
         /// Creates the specific CustomDocumentProperty from the given propertyType with the given value
         /// </summary>
         /// <returns>returns null if property is not set</returns>
-        private CustomDocumentProperty CreatePropertyFromPropertyType(object propertyValue, PropertyType propertyType)
+        public CustomDocumentProperty CreatePropertyFromPropertyType(object propertyValue, PropertyType propertyType)
         {
             var newProp = new CustomDocumentProperty();
             var propSet = false;
