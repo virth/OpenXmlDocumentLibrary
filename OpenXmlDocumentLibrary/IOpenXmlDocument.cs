@@ -3,7 +3,7 @@
     public interface IOpenXmlDocument
     {
 
-        string SetNewProperty(string fileName, string propertyName, object propertyValue, PropertyType propertyType);
+        string SetNewProperty(string propertyName, object propertyValue, PropertyType propertyType);
 
     }
 }

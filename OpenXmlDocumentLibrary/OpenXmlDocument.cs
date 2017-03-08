@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using System.Linq;
 using DocumentFormat.OpenXml.CustomProperties;
 using DocumentFormat.OpenXml.Packaging;
@@ -10,27 +9,54 @@ namespace OpenXmlDocumentLibrary
     public class OpenXmlDocument : IOpenXmlDocument
 
     {
-        //public OpenXmlDocument(string filename)
-        //{
-
-        //}
-
-        //public OpenXmlDocument(byte[] document)
-        //{
-
-        //}
-
-        public string SetNewProperty(string fileName, string propertyName, object propertyValue, PropertyType propertyType)
+        private readonly string _filename;
+        public OpenXmlDocument(string filename)
         {
+            if (string.IsNullOrEmpty(filename))
+                throw new ArgumentNullException(nameof(filename));
 
-            // Given a document name, a property name/value, and the property type, add a custom property 
-            // to a document. 
-            // The function returns the original value, if it existed.
+            _filename = filename;
+        }
 
-            string returnValue = null;
-                
+        /// <summary>
+        ///  Given a property name/value, and the property type, add a custom property to a document. 
+        /// </summary>
+        /// <returns>The function returns the original value, if it existed</returns>
+        public string SetNewProperty(string propertyName, object propertyValue, PropertyType propertyType)
+        {
+            string originalValue = null;
+
+            var newProperty = CreatePropertyFromPropertyType(propertyValue, propertyType);
+
+            // Now that you've handled the parameters, start
+            // working on the document.
+            newProperty.FormatId = "{D5CDD505-2E9C-101B-9397-08002B2CF9AE}";
+            newProperty.Name = propertyName;
+
+            originalValue = AddPropertyToDocument(originalValue, newProperty);
+
+            return originalValue;
+        }
+
+        private string AddPropertyToDocument(string returnValue, CustomDocumentProperty newProperty)
+        {
+            if (_filename.EndsWith("xlsx"))
+                returnValue = ProcessExcel(newProperty);
+            else if (_filename.EndsWith("docx"))
+                returnValue = ProcessWord(newProperty);
+            else
+                throw new Exception("Unknown Filetype");
+            return returnValue;
+        }
+
+        /// <summary>
+        /// Creates the specific CustomDocumentProperty from the given propertyType with the given value
+        /// </summary>
+        /// <returns>returns null if property is not set</returns>
+        private CustomDocumentProperty CreatePropertyFromPropertyType(object propertyValue, PropertyType propertyType)
+        {
             var newProp = new CustomDocumentProperty();
-            bool propSet = false;
+            var propSet = false;
 
             // Calculate the correct type:
             switch (propertyType)
@@ -42,7 +68,7 @@ namespace OpenXmlDocumentLibrary
                     // represent a UTC date/time.
                     if ((propertyValue) is DateTime)
                     {
-                        newProp.VTFileTime = new VTFileTime(string.Format("{0:s}Z", Convert.ToDateTime(propertyValue)));
+                        newProp.VTFileTime = new VTFileTime($"{Convert.ToDateTime(propertyValue):s}Z");
                         propSet = true;
                     }
 
@@ -71,119 +97,116 @@ namespace OpenXmlDocumentLibrary
                 case PropertyType.YesNo:
                     if (propertyValue is bool)
                     {
-                        // Must be lower case!
-                        newProp.VTBool = new VTBool(
-                            Convert.ToBoolean(propertyValue).ToString().ToLower());
+                        newProp.VTBool = new VTBool(Convert.ToBoolean(propertyValue).ToString().ToLower());
                         propSet = true;
                     }
                     break;
+
+                default:
+                    throw new ArgumentException($"unknown {nameof(propertyType)} [{propertyType}]");
             }
 
-            if (!propSet)
-            {
-                // If the code wasn't able to convert the 
-                // property to a valid value, throw an exception:
-                throw new InvalidDataException("propertyValue");
-            }
-
-            // Now that you've handled the parameters, start
-            // working on the document.
-            newProp.FormatId = "{D5CDD505-2E9C-101B-9397-08002B2CF9AE}";
-            newProp.Name = propertyName;
-
-            if (fileName.EndsWith("xlsx"))
-            {
-                using (var document = SpreadsheetDocument.Open(fileName, true))
-                {
-                    var customProps = document.CustomFilePropertiesPart;
-                    if (customProps == null)
-                    {
-                        // No custom properties? Add the part, and the
-                        // collection of properties now.
-                        customProps = document.AddCustomFilePropertiesPart();
-                        customProps.Properties = new DocumentFormat.OpenXml.CustomProperties.Properties();
-                    }
-
-                    var props = customProps.Properties;
-                    if (props != null)
-                    {
-                        // This will trigger an exception is the property's Name property is null, but
-                        // if that happens, the property is damaged, and probably should raise an exception.
-                        var prop = props.
-                            Where(p => ((CustomDocumentProperty)p).Name.Value.ToLower() == propertyName.ToLower())
-                            .FirstOrDefault();
-                        // Does the property exist? If so, get the return value, 
-                        // and then delete the property.
-                        if (prop != null)
-                        {
-                            returnValue = prop.InnerText;
-                            prop.Remove();
-                        }
-
-                        // Append the new property, and 
-                        // fix up all the property ID values. 
-                        // The PropertyId value must start at 2.
-                        props.AppendChild(newProp);
-                        int pid = 2;
-                        foreach (CustomDocumentProperty item in props)
-                        {
-                            item.PropertyId = pid++;
-                        }
-                        props.Save();
-                    }
-                }
-            }
-            else if (fileName.EndsWith("docx"))
-            {
-                using (var document = WordprocessingDocument.Open(fileName, true))
-                {
-                    var customProps = document.CustomFilePropertiesPart;
-                    if (customProps == null)
-                    {
-                        // No custom properties? Add the part, and the
-                        // collection of properties now.
-                        customProps = document.AddCustomFilePropertiesPart();
-                        customProps.Properties = new DocumentFormat.OpenXml.CustomProperties.Properties();
-                    }
-
-                    var props = customProps.Properties;
-                    if (props != null)
-                    {
-                        // This will trigger an exception is the property's Name property is null, but
-                        // if that happens, the property is damaged, and probably should raise an exception.
-                        var prop = props.
-                            Where(p => ((CustomDocumentProperty)p).Name.Value.ToLower() == propertyName.ToLower())
-                            .FirstOrDefault();
-                        // Does the property exist? If so, get the return value, 
-                        // and then delete the property.
-                        if (prop != null)
-                        {
-                            returnValue = prop.InnerText;
-                            prop.Remove();
-                        }
-
-                        // Append the new property, and 
-                        // fix up all the property ID values. 
-                        // The PropertyId value must start at 2.
-                        props.AppendChild(newProp);
-                        int pid = 2;
-                        foreach (CustomDocumentProperty item in props)
-                        {
-                            item.PropertyId = pid++;
-                        }
-                        props.Save();
-                    }
-                }
-            }
-            else
-            {
-                throw new Exception("Unknown Filetype");
-            }
-
-            return returnValue;
+            return propSet ? newProp : null;
         }
 
-        
+        private string ProcessExcel(CustomDocumentProperty newProperty)
+        {
+            var originalValue = "";
+            using (var document = SpreadsheetDocument.Open(_filename, true))
+            {
+                originalValue = AddProperty(newProperty, document);
+            }
+            return originalValue;
+        }
 
+        private string ProcessWord(CustomDocumentProperty newProperty)
+        {
+            var originalValue = "";
+            using (var document = WordprocessingDocument.Open(_filename, true))
+            {
+                originalValue = AddProperty(newProperty, document);
+            }
+            return originalValue;
+        }
+
+        private static string AddProperty(CustomDocumentProperty newProperty, OpenXmlPackage document)
+        {
+            var originalValue = "";
+            var customProps = GetCustomDocumentProperties(document);
+
+            var existinProperties = customProps.Properties;
+            if (existinProperties == null)
+                return originalValue;
+
+            var existingProperty = existinProperties.FirstOrDefault( p => string.Equals(((CustomDocumentProperty)p).Name.Value, newProperty.Name.Value, StringComparison.CurrentCultureIgnoreCase));
+
+            if (existingProperty != null)
+            {
+                originalValue = existingProperty.InnerText;
+                existingProperty.Remove();
+            }
+
+            // Append the new property, and 
+            // fix up all the property ID values. 
+            // The PropertyId value must start at 2.
+            existinProperties.AppendChild(newProperty);
+            var pid = 2;
+            foreach (var openXmlElement in existinProperties)
+            {
+                var item = (CustomDocumentProperty)openXmlElement;
+                item.PropertyId = pid++;
+            }
+            existinProperties.Save();
+            return originalValue;
+        }
+
+        private static CustomFilePropertiesPart GetCustomDocumentProperties(OpenXmlPackage document)
+        {
+            CustomFilePropertiesPart customProps = null;
+            if (document.GetType() == typeof(WordprocessingDocument))
+            {
+                var word = document as WordprocessingDocument;
+                if (word != null)
+                    customProps = word.CustomFilePropertiesPart;
+            }
+            else if (document.GetType() == typeof(SpreadsheetDocument))
+            {
+                var excel = document as SpreadsheetDocument;
+                if (excel != null)
+                    customProps = excel.CustomFilePropertiesPart;
+            }
+
+            if (customProps == null)
+                customProps = InitializeCustomDocumentProperties(document);
+            return customProps;
+        }
+
+        /// <summary>
+        /// No custom properties? Add the part, and the collection of properties 
+        /// </summary>
+        private static CustomFilePropertiesPart InitializeCustomDocumentProperties(OpenXmlPackage document)
+        {
+            CustomFilePropertiesPart customProperties = null;
+            if (document.GetType() == typeof(WordprocessingDocument))
+            {
+                var word = document as WordprocessingDocument;
+                if (word != null)
+                    customProperties = word.AddCustomFilePropertiesPart();
+            }
+            else if (document.GetType() == typeof(SpreadsheetDocument))
+            {
+                var excel = document as SpreadsheetDocument;
+                if (excel != null)
+                    customProperties = excel.AddCustomFilePropertiesPart();
+            }
+            else
+                throw new ArgumentException($"unkown type of {nameof(document)} [{document.GetType()}]");
+
+            if (customProperties == null)
+                throw new Exception("customDocumentProperties could not be initialized");
+
+            customProperties.Properties = new Properties();
+            return customProperties;
+        }
     }
 }
