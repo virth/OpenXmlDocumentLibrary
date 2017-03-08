@@ -10,9 +10,9 @@ namespace OpenXmlLibrary.Tests
  
     public class SetNewProperty
     {
-        OpenXmlDocument CreateOpenXmlDocument()
+        OpenXmlDocumentLibrary.OpenXmlDocument CreateOpenXmlDocument(string filename = "test.docx")
         {
-            return new OpenXmlDocument("test.docx");
+            return new OpenXmlDocumentLibrary.OpenXmlDocument(filename);
         }
 
         [Fact]
@@ -38,6 +38,15 @@ namespace OpenXmlLibrary.Tests
             openXmlDoc.Invoking(x => x.SetNewProperty("test", null, PropertyType.Text))
                 .ShouldThrow<ArgumentNullException>()
                 .And.ParamName.Should().Contain("propertyValue");
+        }
+
+        [Fact]
+        public void ShouldThrow_WhenFileTypeIsUnknown()
+        {
+            var openXmlDoc = CreateOpenXmlDocument("foo.bar");
+            openXmlDoc.Invoking(x => x.SetNewProperty("foo", "bar", PropertyType.Text))
+                .ShouldThrow<Exception>()
+                .And.Message.Should().Contain("Unknown");
         }
     }
 }

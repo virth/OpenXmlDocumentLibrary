@@ -31,7 +31,7 @@ namespace OpenXmlDocumentLibrary
 
             string originalValue = null;
 
-            var newProperty = CreatePropertyFromPropertyType(propertyValue, propertyType);
+            var newProperty = CreateProperty(propertyValue, propertyType);
 
             // Now that you've handled the parameters, start
             // working on the document.
@@ -58,9 +58,12 @@ namespace OpenXmlDocumentLibrary
         /// Creates the specific CustomDocumentProperty from the given propertyType with the given value
         /// </summary>
         /// <returns>returns null if property is not set</returns>
-        public CustomDocumentProperty CreatePropertyFromPropertyType(object propertyValue, PropertyType propertyType)
+        public CustomDocumentProperty CreateProperty(object propertyValue, PropertyType propertyType)
         {
-            var newProp = new CustomDocumentProperty();
+            if (propertyValue == null)
+                throw new ArgumentNullException(nameof(propertyValue));
+
+            var returnedProperty = new CustomDocumentProperty();
             var propSet = false;
 
             // Calculate the correct type:
@@ -71,17 +74,17 @@ namespace OpenXmlDocumentLibrary
                     // and if so, format in the correct way. 
                     // The date/time value passed in should 
                     // represent a UTC date/time.
-                    if ((propertyValue) is DateTime)
+                    if (propertyValue is DateTime)
                     {
-                        newProp.VTFileTime = new VTFileTime($"{Convert.ToDateTime(propertyValue):s}Z");
+                        returnedProperty.VTFileTime = new VTFileTime($"{Convert.ToDateTime(propertyValue):s}Z");
                         propSet = true;
                     }
 
                     break;
                 case PropertyType.NumberInteger:
-                    if ((propertyValue) is int)
+                    if (propertyValue is int)
                     {
-                        newProp.VTInt32 = new VTInt32(propertyValue.ToString());
+                        returnedProperty.VTInt32 = new VTInt32(propertyValue.ToString());
                         propSet = true;
                     }
 
@@ -89,20 +92,20 @@ namespace OpenXmlDocumentLibrary
                 case PropertyType.NumberDouble:
                     if (propertyValue is double)
                     {
-                        newProp.VTFloat = new VTFloat(propertyValue.ToString());
+                        returnedProperty.VTFloat = new VTFloat(propertyValue.ToString());
                         propSet = true;
                     }
 
                     break;
                 case PropertyType.Text:
-                    newProp.VTLPWSTR = new VTLPWSTR(propertyValue.ToString());
+                    returnedProperty.VTLPWSTR = new VTLPWSTR(propertyValue.ToString());
                     propSet = true;
 
                     break;
                 case PropertyType.YesNo:
                     if (propertyValue is bool)
                     {
-                        newProp.VTBool = new VTBool(Convert.ToBoolean(propertyValue).ToString().ToLower());
+                        returnedProperty.VTBool = new VTBool(Convert.ToBoolean(propertyValue).ToString().ToLower());
                         propSet = true;
                     }
                     break;
@@ -111,7 +114,7 @@ namespace OpenXmlDocumentLibrary
                     throw new ArgumentException($"unknown {nameof(propertyType)} [{propertyType}]");
             }
 
-            return propSet ? newProp : null;
+            return propSet ? returnedProperty : null;
         }
 
         private string ProcessExcel(CustomDocumentProperty newProperty)
